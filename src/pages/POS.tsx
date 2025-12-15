@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,91 +14,151 @@ import {
   Trash2,
   CreditCard,
   Banknote,
-  Search
+  Search,
+  Loader2,
+  Package
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePOSCategories, usePOSProducts, useCreateTransaction, CartItem, ProductWithCategory } from "@/hooks/usePOS";
+import { GuestSelectionDialog } from "@/components/pos/GuestSelectionDialog";
+import { Database } from "@/integrations/supabase/types";
 
-const categories = [
-  { id: "restaurant", label: "Restaurant", icon: UtensilsCrossed },
-  { id: "bar", label: "Bar & Lounge", icon: Wine },
-  { id: "cafe", label: "Café", icon: Coffee },
-  { id: "spa", label: "Spa & Wellness", icon: Sparkles },
-];
+type Guest = Database["public"]["Tables"]["guests"]["Row"];
+type Room = Database["public"]["Tables"]["rooms"]["Row"];
+type Booking = Database["public"]["Tables"]["bookings"]["Row"];
 
-const products = [
-  { id: 1, name: "Club Sandwich", category: "restaurant", price: 18.50 },
-  { id: 2, name: "Caesar Salad", category: "restaurant", price: 14.00 },
-  { id: 3, name: "Grilled Salmon", category: "restaurant", price: 32.00 },
-  { id: 4, name: "Steak Frites", category: "restaurant", price: 38.00 },
-  { id: 5, name: "Craft Beer", category: "bar", price: 8.00 },
-  { id: 6, name: "Signature Cocktail", category: "bar", price: 15.00 },
-  { id: 7, name: "Wine Glass", category: "bar", price: 12.00 },
-  { id: 8, name: "Espresso", category: "cafe", price: 4.50 },
-  { id: 9, name: "Cappuccino", category: "cafe", price: 5.50 },
-  { id: 10, name: "Pastry Selection", category: "cafe", price: 7.00 },
-  { id: 11, name: "Swedish Massage", category: "spa", price: 120.00 },
-  { id: 12, name: "Facial Treatment", category: "spa", price: 85.00 },
-];
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
+interface BookingWithDetails extends Booking {
+  guest?: Guest;
+  room?: Room;
 }
 
+// Icon mapping for categories
+const categoryIcons: Record<string, React.ElementType> = {
+  restaurant: UtensilsCrossed,
+  bar: Wine,
+  cafe: Coffee,
+  spa: Sparkles,
+  default: Package,
+};
+
+const getCategoryIcon = (categoryName: string) => {
+  const name = categoryName.toLowerCase();
+  if (name.includes("restaurant") || name.includes("food")) return categoryIcons.restaurant;
+  if (name.includes("bar") || name.includes("drink") || name.includes("lounge")) return categoryIcons.bar;
+  if (name.includes("cafe") || name.includes("coffee")) return categoryIcons.cafe;
+  if (name.includes("spa") || name.includes("wellness")) return categoryIcons.spa;
+  return categoryIcons.default;
+};
+
 const POS = () => {
-  const [activeCategory, setActiveCategory] = useState("restaurant");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isGuestDialogOpen, setIsGuestDialogOpen] = useState(false);
 
-  const filteredProducts = products.filter(
-    p => p.category === activeCategory && 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { data: categories, isLoading: categoriesLoading } = usePOSCategories();
+  const { data: products, isLoading: productsLoading } = usePOSProducts();
+  const createTransaction = useCreateTransaction();
 
-  const addToCart = (product: typeof products[0]) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+  // Set default category when data loads
+  useMemo(() => {
+    if (categories?.length && !activeCategory) {
+      setActiveCategory(categories[0].id);
+    }
+  }, [categories, activeCategory]);
+
+  const filteredProducts = useMemo(() => {
+    return products?.filter(
+      (p) =>
+        (!activeCategory || p.category_id === activeCategory) &&
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+  }, [products, activeCategory, searchQuery]);
+
+  const addToCart = (product: ProductWithCategory) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        return prev.map(item => 
-          item.id === product.id 
+        return prev.map((item) =>
+          item.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { id: product.id, name: product.name, price: Number(product.price), quantity: 1 }];
     });
   };
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCart(prev => 
-      prev.map(item => {
-        if (item.id === id) {
-          const newQty = item.quantity + delta;
-          return newQty > 0 ? { ...item, quantity: newQty } : item;
-        }
-        return item;
-      }).filter(item => item.quantity > 0)
+  const updateQuantity = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.id === id) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : item;
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0)
     );
   };
 
-  const removeFromCart = (id: number) => {
-    setCart(prev => prev.filter(item => item.id !== id));
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== id));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.1;
   const total = subtotal + tax;
 
-  const handleCheckout = (method: string) => {
+  const handleCheckout = async (method: string, booking?: BookingWithDetails) => {
     if (cart.length === 0) {
       toast.error("Cart is empty");
       return;
     }
-    toast.success(`Payment of $${total.toFixed(2)} processed via ${method}`);
-    setCart([]);
+
+    try {
+      await createTransaction.mutateAsync({
+        transaction: {
+          subtotal,
+          tax,
+          total,
+          payment_method: method.toLowerCase(),
+          status: "completed",
+          guest_id: booking?.guest_id || null,
+          booking_id: booking?.id || null,
+        },
+        items: cart.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+      });
+
+      const guestInfo = booking 
+        ? ` for ${booking.guest?.first_name} ${booking.guest?.last_name} (Room ${booking.room?.room_number})`
+        : "";
+
+      toast.success(`Payment of $${total.toFixed(2)} processed via ${method}${guestInfo}`);
+      setCart([]);
+    } catch (error) {
+      toast.error("Failed to process transaction. Please try again.");
+    }
   };
+
+  const handleRoomCharge = () => {
+    if (cart.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+    setIsGuestDialogOpen(true);
+  };
+
+  const handleGuestSelect = (booking: BookingWithDetails) => {
+    handleCheckout("Room Charge", booking);
+  };
+
+  const isLoading = categoriesLoading || productsLoading;
 
   return (
     <MainLayout title="Point of Sale" subtitle="Process guest transactions">
@@ -107,19 +167,30 @@ const POS = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Categories */}
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {categories.map((cat) => (
-              <Button
-                key={cat.id}
-                variant={activeCategory === cat.id ? "default" : "secondary"}
-                className={`flex items-center gap-2 whitespace-nowrap ${
-                  activeCategory === cat.id ? "bg-primary text-primary-foreground" : ""
-                }`}
-                onClick={() => setActiveCategory(cat.id)}
-              >
-                <cat.icon className="w-4 h-4" />
-                {cat.label}
-              </Button>
-            ))}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : categories?.length === 0 ? (
+              <p className="text-muted-foreground">No categories available</p>
+            ) : (
+              categories?.map((cat) => {
+                const Icon = getCategoryIcon(cat.name);
+                return (
+                  <Button
+                    key={cat.id}
+                    variant={activeCategory === cat.id ? "default" : "secondary"}
+                    className={`flex items-center gap-2 whitespace-nowrap ${
+                      activeCategory === cat.id ? "bg-primary text-primary-foreground" : ""
+                    }`}
+                    onClick={() => setActiveCategory(cat.id)}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {cat.name}
+                  </Button>
+                );
+              })
+            )}
           </div>
 
           {/* Search */}
@@ -135,21 +206,40 @@ const POS = () => {
 
           {/* Products Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {filteredProducts.map((product) => (
-              <Card 
-                key={product.id} 
-                className="glass-card cursor-pointer hover:border-accent transition-colors"
-                onClick={() => addToCart(product)}
-              >
-                <CardContent className="p-4">
-                  <div className="aspect-square bg-secondary rounded-lg mb-3 flex items-center justify-center">
-                    <ShoppingCart className="w-8 h-8 text-muted-foreground/30" />
-                  </div>
-                  <h3 className="font-medium text-foreground">{product.name}</h3>
-                  <p className="text-lg font-semibold text-accent">${product.price.toFixed(2)}</p>
-                </CardContent>
-              </Card>
-            ))}
+            {productsLoading ? (
+              <div className="col-span-full flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                {products?.length === 0
+                  ? "No products available. Add products to the database to get started."
+                  : "No products match your search."}
+              </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <Card
+                  key={product.id}
+                  className="glass-card cursor-pointer hover:border-accent transition-colors"
+                  onClick={() => addToCart(product)}
+                >
+                  <CardContent className="p-4">
+                    <div className="aspect-square bg-secondary rounded-lg mb-3 flex items-center justify-center">
+                      <ShoppingCart className="w-8 h-8 text-muted-foreground/30" />
+                    </div>
+                    <h3 className="font-medium text-foreground">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                        {product.description}
+                      </p>
+                    )}
+                    <p className="text-lg font-semibold text-accent">
+                      ${Number(product.price).toFixed(2)}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
 
@@ -159,6 +249,11 @@ const POS = () => {
             <CardTitle className="font-heading text-lg flex items-center gap-2">
               <ShoppingCart className="w-5 h-5" />
               Current Order
+              {cart.length > 0 && (
+                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)} items
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
@@ -170,32 +265,41 @@ const POS = () => {
                 </p>
               ) : (
                 cart.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium text-foreground text-sm">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">
+                        {item.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        ${item.price.toFixed(2)} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                    <div className="flex items-center gap-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-7 w-7"
                         onClick={() => updateQuantity(item.id, -1)}
                       >
                         <Minus className="w-3 h-3" />
                       </Button>
-                      <span className="w-6 text-center font-medium">{item.quantity}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <span className="w-6 text-center font-medium text-sm">
+                        {item.quantity}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-7 w-7"
                         onClick={() => updateQuantity(item.id, 1)}
                       >
                         <Plus className="w-3 h-3" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-7 w-7 text-destructive"
                         onClick={() => removeFromCart(item.id)}
                       >
@@ -225,30 +329,54 @@ const POS = () => {
 
             {/* Payment Buttons */}
             <div className="grid grid-cols-2 gap-3 mt-6">
-              <Button 
+              <Button
                 className="bg-primary text-primary-foreground"
                 onClick={() => handleCheckout("Card")}
+                disabled={createTransaction.isPending || cart.length === 0}
               >
                 <CreditCard className="w-4 h-4 mr-2" />
                 Card
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => handleCheckout("Cash")}
+                disabled={createTransaction.isPending || cart.length === 0}
               >
                 <Banknote className="w-4 h-4 mr-2" />
                 Cash
               </Button>
             </div>
-            <Button 
+            <Button
               className="w-full mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={() => handleCheckout("Room Charge")}
+              onClick={handleRoomCharge}
+              disabled={createTransaction.isPending || cart.length === 0}
             >
+              {createTransaction.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
               Charge to Room
             </Button>
+
+            {/* Clear Cart */}
+            {cart.length > 0 && (
+              <Button
+                variant="ghost"
+                className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setCart([])}
+              >
+                Clear Cart
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <GuestSelectionDialog
+        open={isGuestDialogOpen}
+        onOpenChange={setIsGuestDialogOpen}
+        onSelect={handleGuestSelect}
+        total={total}
+      />
     </MainLayout>
   );
 };
