@@ -13,13 +13,27 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Eye,
+  CheckCircle,
+  LogIn,
+  LogOut,
+  XCircle
 } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import { NewBookingDialog } from "@/components/bookings/NewBookingDialog";
-import { useBookings, useRooms, BookingWithDetails } from "@/hooks/useBookings";
+import { BookingDetailsDialog } from "@/components/bookings/BookingDetailsDialog";
+import { useBookings, useRooms, useUpdateBookingStatus, BookingWithDetails } from "@/hooks/useBookings";
 import { format } from "date-fns";
 import { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type BookingStatus = Database["public"]["Enums"]["booking_status"];
 
@@ -27,9 +41,13 @@ const Bookings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | BookingStatus>("All");
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  const { toast } = useToast();
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
   const { data: rooms } = useRooms();
+  const updateStatus = useUpdateBookingStatus();
 
   const statuses: ("All" | BookingStatus)[] = ["All", "confirmed", "pending", "checked_in", "checked_out", "cancelled"];
 
@@ -64,12 +82,49 @@ const Bookings = () => {
     }
   };
 
+  const handleQuickAction = async (booking: BookingWithDetails, newStatus: BookingStatus) => {
+    try {
+      await updateStatus.mutateAsync({ id: booking.id, status: newStatus });
+      toast({
+        title: "Booking Updated",
+        description: `Booking status changed to ${getStatusLabel(newStatus)}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update booking status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getQuickActions = (booking: BookingWithDetails) => {
+    switch (booking.status) {
+      case "pending":
+        return [
+          { status: "confirmed" as BookingStatus, label: "Confirm", icon: CheckCircle, color: "text-success" },
+          { status: "cancelled" as BookingStatus, label: "Cancel", icon: XCircle, color: "text-destructive" },
+        ];
+      case "confirmed":
+        return [
+          { status: "checked_in" as BookingStatus, label: "Check In", icon: LogIn, color: "text-primary" },
+          { status: "cancelled" as BookingStatus, label: "Cancel", icon: XCircle, color: "text-destructive" },
+        ];
+      case "checked_in":
+        return [
+          { status: "checked_out" as BookingStatus, label: "Check Out", icon: LogOut, color: "text-accent" },
+        ];
+      default:
+        return [];
+    }
+  };
+
   // Calculate stats
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
   
-  const todayCheckIns = bookings?.filter(b => b.check_in_date === todayStr).length || 0;
-  const todayCheckOuts = bookings?.filter(b => b.check_out_date === todayStr).length || 0;
+  const todayCheckIns = bookings?.filter(b => b.check_in_date === todayStr && b.status !== "cancelled").length || 0;
+  const todayCheckOuts = bookings?.filter(b => b.check_out_date === todayStr && b.status !== "cancelled").length || 0;
   const availableRooms = rooms?.filter(r => r.status === "available").length || 0;
   const totalRooms = rooms?.length || 0;
   const occupancyRate = totalRooms > 0 ? Math.round(((totalRooms - availableRooms) / totalRooms) * 100) : 0;
@@ -89,6 +144,11 @@ const Bookings = () => {
     }
     return acc;
   }, [] as { type: string; available: number; total: number }[]) || [];
+
+  const handleViewDetails = (booking: BookingWithDetails) => {
+    setSelectedBooking(booking);
+    setIsDetailsOpen(true);
+  };
 
   return (
     <MainLayout title="Booking Management" subtitle="Manage reservations and room assignments">
@@ -182,50 +242,78 @@ const Bookings = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredBookings.map((booking) => (
-                <Card key={booking.id} className="glass-card hover:shadow-lg transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Users className="w-6 h-6 text-primary" />
+              filteredBookings.map((booking) => {
+                const quickActions = getQuickActions(booking);
+                return (
+                  <Card 
+                    key={booking.id} 
+                    className="glass-card hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => handleViewDetails(booking)}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-4">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Users className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-foreground">
+                                {booking.guest?.first_name} {booking.guest?.last_name}
+                              </h3>
+                              <Badge variant="secondary" className={getStatusColor(booking.status)}>
+                                {getStatusLabel(booking.status)}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{booking.guest?.email}</p>
+                            <div className="flex items-center gap-4 mt-3 text-sm">
+                              <span className="flex items-center gap-1">
+                                <BedDouble className="w-4 h-4 text-muted-foreground" />
+                                Room {booking.room?.room_number} ({booking.room?.room_type})
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                {booking.num_guests} guest{booking.num_guests > 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                              <span>
+                                {format(new Date(booking.check_in_date), "MMM d")} → {format(new Date(booking.check_out_date), "MMM d, yyyy")}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-foreground">
-                              {booking.guest?.first_name} {booking.guest?.last_name}
-                            </h3>
-                            <Badge variant="secondary" className={getStatusColor(booking.status)}>
-                              {getStatusLabel(booking.status)}
-                            </Badge>
+                        <div className="text-right flex flex-col items-end gap-2">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total</p>
+                            <p className="text-xl font-semibold text-accent">${Number(booking.total_amount)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{booking.booking_number}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{booking.guest?.email}</p>
-                          <div className="flex items-center gap-4 mt-3 text-sm">
-                            <span className="flex items-center gap-1">
-                              <BedDouble className="w-4 h-4 text-muted-foreground" />
-                              Room {booking.room?.room_number} ({booking.room?.room_type})
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Users className="w-4 h-4 text-muted-foreground" />
-                              {booking.num_guests} guest{booking.num_guests > 1 ? "s" : ""}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <span>
-                              {format(new Date(booking.check_in_date), "MMM d")} → {format(new Date(booking.check_out_date), "MMM d, yyyy")}
-                            </span>
-                          </div>
+                          
+                          {/* Quick Actions */}
+                          {quickActions.length > 0 && (
+                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                              {quickActions.map((action) => (
+                                <Button
+                                  key={action.status}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickAction(booking, action.status)}
+                                  disabled={updateStatus.isPending}
+                                  className={`${action.color} hover:${action.color}`}
+                                >
+                                  <action.icon className="w-4 h-4 mr-1" />
+                                  {action.label}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Total</p>
-                        <p className="text-xl font-semibold text-accent">${Number(booking.total_amount)}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{booking.booking_number}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         </div>
@@ -305,6 +393,11 @@ const Bookings = () => {
       </div>
 
       <NewBookingDialog open={isNewBookingOpen} onOpenChange={setIsNewBookingOpen} />
+      <BookingDetailsDialog 
+        booking={selectedBooking} 
+        open={isDetailsOpen} 
+        onOpenChange={setIsDetailsOpen} 
+      />
     </MainLayout>
   );
 };
