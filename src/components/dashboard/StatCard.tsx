@@ -1,3 +1,4 @@
+import * as React from "react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,16 +11,16 @@ interface StatCardProps {
   iconColor?: string;
 }
 
-const StatCard = ({ 
+const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(({ 
   title, 
   value, 
   change, 
   changeType = "neutral", 
   icon: Icon,
   iconColor = "bg-accent/10 text-accent"
-}: StatCardProps) => {
+}, ref) => {
   return (
-    <div className="stat-card">
+    <div ref={ref} className="stat-card">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -43,6 +44,8 @@ const StatCard = ({
       </div>
     </div>
   );
-};
+});
+
+StatCard.displayName = "StatCard";
 
 export default StatCard;
