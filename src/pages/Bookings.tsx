@@ -12,49 +12,83 @@ import {
   BedDouble,
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
+import { NewBookingDialog } from "@/components/bookings/NewBookingDialog";
+import { useBookings, useRooms, BookingWithDetails } from "@/hooks/useBookings";
+import { format } from "date-fns";
+import { Database } from "@/integrations/supabase/types";
 
-const bookings = [
-  { id: "BK001", guest: "John Smith", email: "john@email.com", room: "Suite 401", roomType: "Suite", checkIn: "Dec 15", checkOut: "Dec 18", guests: 2, status: "Confirmed", total: 850 },
-  { id: "BK002", guest: "Maria Garcia", email: "maria@email.com", room: "Room 205", roomType: "Deluxe", checkIn: "Dec 15", checkOut: "Dec 17", guests: 1, status: "Pending", total: 380 },
-  { id: "BK003", guest: "Alex Chen", email: "alex@email.com", room: "Suite 502", roomType: "Suite", checkIn: "Dec 16", checkOut: "Dec 20", guests: 3, status: "Confirmed", total: 1200 },
-  { id: "BK004", guest: "Emma Wilson", email: "emma@email.com", room: "Room 118", roomType: "Standard", checkIn: "Dec 16", checkOut: "Dec 17", guests: 2, status: "Checked In", total: 150 },
-  { id: "BK005", guest: "James Brown", email: "james@email.com", room: "Room 302", roomType: "Deluxe", checkIn: "Dec 17", checkOut: "Dec 21", guests: 2, status: "Confirmed", total: 720 },
-  { id: "BK006", guest: "Sophie Miller", email: "sophie@email.com", room: "Suite 601", roomType: "Suite", checkIn: "Dec 18", checkOut: "Dec 22", guests: 4, status: "Pending", total: 1600 },
-];
-
-const roomAvailability = [
-  { type: "Standard", available: 12, total: 20 },
-  { type: "Deluxe", available: 8, total: 15 },
-  { type: "Suite", available: 3, total: 10 },
-  { type: "Presidential", available: 1, total: 2 },
-];
+type BookingStatus = Database["public"]["Enums"]["booking_status"];
 
 const Bookings = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | BookingStatus>("All");
+  const [isNewBookingOpen, setIsNewBookingOpen] = useState(false);
 
-  const statuses = ["All", "Confirmed", "Pending", "Checked In", "Checked Out"];
+  const { data: bookings, isLoading: bookingsLoading } = useBookings();
+  const { data: rooms } = useRooms();
 
-  const filteredBookings = bookings.filter(booking => {
+  const statuses: ("All" | BookingStatus)[] = ["All", "confirmed", "pending", "checked_in", "checked_out", "cancelled"];
+
+  const getStatusLabel = (status: BookingStatus) => {
+    const labels: Record<BookingStatus, string> = {
+      confirmed: "Confirmed",
+      pending: "Pending",
+      checked_in: "Checked In",
+      checked_out: "Checked Out",
+      cancelled: "Cancelled",
+    };
+    return labels[status] || status;
+  };
+
+  const filteredBookings = bookings?.filter((booking: BookingWithDetails) => {
+    const guestName = `${booking.guest?.first_name || ""} ${booking.guest?.last_name || ""}`.toLowerCase();
     const matchesSearch = 
-      booking.guest.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      booking.id.toLowerCase().includes(searchQuery.toLowerCase());
+      guestName.includes(searchQuery.toLowerCase()) ||
+      booking.booking_number.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "All" || booking.status === statusFilter;
     return matchesSearch && matchesStatus;
-  });
+  }) || [];
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: BookingStatus) => {
     switch (status) {
-      case "Confirmed": return "bg-success/10 text-success border-success/20";
-      case "Pending": return "bg-warning/10 text-warning border-warning/20";
-      case "Checked In": return "bg-primary/10 text-primary border-primary/20";
-      case "Checked Out": return "bg-muted text-muted-foreground";
+      case "confirmed": return "bg-success/10 text-success border-success/20";
+      case "pending": return "bg-warning/10 text-warning border-warning/20";
+      case "checked_in": return "bg-primary/10 text-primary border-primary/20";
+      case "checked_out": return "bg-muted text-muted-foreground";
+      case "cancelled": return "bg-destructive/10 text-destructive border-destructive/20";
       default: return "bg-secondary text-secondary-foreground";
     }
   };
+
+  // Calculate stats
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  
+  const todayCheckIns = bookings?.filter(b => b.check_in_date === todayStr).length || 0;
+  const todayCheckOuts = bookings?.filter(b => b.check_out_date === todayStr).length || 0;
+  const availableRooms = rooms?.filter(r => r.status === "available").length || 0;
+  const totalRooms = rooms?.length || 0;
+  const occupancyRate = totalRooms > 0 ? Math.round(((totalRooms - availableRooms) / totalRooms) * 100) : 0;
+
+  // Room availability by type
+  const roomAvailability = rooms?.reduce((acc, room) => {
+    const existing = acc.find(r => r.type === room.room_type);
+    if (existing) {
+      existing.total += 1;
+      if (room.status === "available") existing.available += 1;
+    } else {
+      acc.push({
+        type: room.room_type,
+        available: room.status === "available" ? 1 : 0,
+        total: 1
+      });
+    }
+    return acc;
+  }, [] as { type: string; available: number; total: number }[]) || [];
 
   return (
     <MainLayout title="Booking Management" subtitle="Manage reservations and room assignments">
@@ -62,29 +96,29 @@ const Bookings = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Today's Check-ins"
-          value="12"
-          change="3 arrivals pending"
+          value={todayCheckIns}
+          change={`${bookings?.filter(b => b.status === "pending").length || 0} pending`}
           icon={Calendar}
         />
         <StatCard
           title="Today's Check-outs"
-          value="8"
-          change="2 late checkouts"
+          value={todayCheckOuts}
+          change={`${bookings?.filter(b => b.status === "checked_in").length || 0} currently in`}
           icon={Clock}
           iconColor="bg-primary/10 text-primary"
         />
         <StatCard
           title="Available Rooms"
-          value="24"
-          change="Out of 47 total"
+          value={availableRooms}
+          change={`Out of ${totalRooms} total`}
           icon={BedDouble}
           iconColor="bg-success/10 text-success"
         />
         <StatCard
           title="Occupancy Rate"
-          value="78%"
-          change="+5% vs last week"
-          changeType="positive"
+          value={`${occupancyRate}%`}
+          change={occupancyRate > 70 ? "Good occupancy" : "Room for more"}
+          changeType={occupancyRate > 70 ? "positive" : "neutral"}
           icon={Users}
           iconColor="bg-warning/10 text-warning"
         />
@@ -106,7 +140,7 @@ const Bookings = () => {
                       onClick={() => setStatusFilter(status)}
                       className={statusFilter === status ? "bg-primary text-primary-foreground" : ""}
                     >
-                      {status}
+                      {status === "All" ? "All" : getStatusLabel(status as BookingStatus)}
                     </Button>
                   ))}
                 </div>
@@ -120,7 +154,10 @@ const Bookings = () => {
                       className="pl-10"
                     />
                   </div>
-                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Button 
+                    className="bg-accent text-accent-foreground hover:bg-accent/90"
+                    onClick={() => setIsNewBookingOpen(true)}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     New Booking
                   </Button>
@@ -131,46 +168,65 @@ const Bookings = () => {
 
           {/* Bookings Cards */}
           <div className="space-y-4">
-            {filteredBookings.map((booking) => (
-              <Card key={booking.id} className="glass-card hover:shadow-lg transition-shadow">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground">{booking.guest}</h3>
-                          <Badge variant="secondary" className={getStatusColor(booking.status)}>
-                            {booking.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{booking.email}</p>
-                        <div className="flex items-center gap-4 mt-3 text-sm">
-                          <span className="flex items-center gap-1">
-                            <BedDouble className="w-4 h-4 text-muted-foreground" />
-                            {booking.room} ({booking.roomType})
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Users className="w-4 h-4 text-muted-foreground" />
-                            {booking.guests} guests
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span>{booking.checkIn} → {booking.checkOut}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Total</p>
-                      <p className="text-xl font-semibold text-accent">${booking.total}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{booking.id}</p>
-                    </div>
-                  </div>
+            {bookingsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredBookings.length === 0 ? (
+              <Card className="glass-card">
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  {bookings?.length === 0 
+                    ? "No bookings yet. Create your first booking to get started."
+                    : "No bookings match your search criteria."
+                  }
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              filteredBookings.map((booking) => (
+                <Card key={booking.id} className="glass-card hover:shadow-lg transition-shadow">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Users className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-foreground">
+                              {booking.guest?.first_name} {booking.guest?.last_name}
+                            </h3>
+                            <Badge variant="secondary" className={getStatusColor(booking.status)}>
+                              {getStatusLabel(booking.status)}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{booking.guest?.email}</p>
+                          <div className="flex items-center gap-4 mt-3 text-sm">
+                            <span className="flex items-center gap-1">
+                              <BedDouble className="w-4 h-4 text-muted-foreground" />
+                              Room {booking.room?.room_number} ({booking.room?.room_type})
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Users className="w-4 h-4 text-muted-foreground" />
+                              {booking.num_guests} guest{booking.num_guests > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <span>
+                              {format(new Date(booking.check_in_date), "MMM d")} → {format(new Date(booking.check_out_date), "MMM d, yyyy")}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Total</p>
+                        <p className="text-xl font-semibold text-accent">${Number(booking.total_amount)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{booking.booking_number}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
 
@@ -180,7 +236,9 @@ const Bookings = () => {
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="font-heading text-lg">December 2024</CardTitle>
+                <CardTitle className="font-heading text-lg">
+                  {format(new Date(), "MMMM yyyy")}
+                </CardTitle>
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <ChevronLeft className="w-4 h-4" />
@@ -198,16 +256,19 @@ const Bookings = () => {
                     {day}
                   </div>
                 ))}
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                  <div
-                    key={day}
-                    className={`p-2 rounded-lg cursor-pointer hover:bg-secondary transition-colors ${
-                      day === 15 ? "bg-accent text-accent-foreground font-semibold" : ""
-                    } ${[12, 16, 18, 22].includes(day) ? "bg-primary/10 text-primary" : ""}`}
-                  >
-                    {day}
-                  </div>
-                ))}
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                  const currentDay = new Date().getDate();
+                  return (
+                    <div
+                      key={day}
+                      className={`p-2 rounded-lg cursor-pointer hover:bg-secondary transition-colors ${
+                        day === currentDay ? "bg-accent text-accent-foreground font-semibold" : ""
+                      }`}
+                    >
+                      {day}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -218,26 +279,32 @@ const Bookings = () => {
               <CardTitle className="font-heading text-lg">Room Availability</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {roomAvailability.map((room) => (
-                <div key={room.type} className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{room.type}</span>
-                    <span className="text-muted-foreground">
-                      {room.available}/{room.total} available
-                    </span>
+              {roomAvailability.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No rooms configured yet.</p>
+              ) : (
+                roomAvailability.map((room) => (
+                  <div key={room.type} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium capitalize">{room.type}</span>
+                      <span className="text-muted-foreground">
+                        {room.available}/{room.total} available
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent rounded-full transition-all duration-500"
+                        style={{ width: `${(room.available / room.total) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-accent rounded-full transition-all duration-500"
-                      style={{ width: `${(room.available / room.total) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <NewBookingDialog open={isNewBookingOpen} onOpenChange={setIsNewBookingOpen} />
     </MainLayout>
   );
 };
