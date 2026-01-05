@@ -21,26 +21,26 @@ const navItems = [
 
 const Sidebar = () => {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 sidebar-gradient border-r border-sidebar-border flex flex-col z-50">
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-            <Hotel className="w-6 h-6 text-accent-foreground" />
+          <div className="w-10 h-10 rounded-sm bg-white flex items-center justify-center">
+            <Hotel className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h1 className="font-heading text-lg font-semibold text-sidebar-foreground">
+            <h1 className="font-heading text-base font-medium text-sidebar-foreground">
               Minima Hotel
             </h1>
-            <p className="text-xs text-sidebar-foreground/50">Hotel Management</p>
+            <p className="text-xs text-sidebar-foreground/50">Management</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        <p className="text-xs font-medium text-sidebar-foreground/40 uppercase tracking-wider px-4 mb-3">
-          Main Menu
+        <p className="text-xs text-sidebar-foreground/40 px-4 mb-4">
+          Menu
         </p>
         {navItems.map((item) => (
           <NavLink
@@ -53,8 +53,8 @@ const Sidebar = () => {
               )
             }
           >
-            <item.icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
+            <item.icon className="w-4 h-4" />
+            <span className="text-sm">{item.label}</span>
           </NavLink>
         ))}
       </nav>
@@ -62,12 +62,12 @@ const Sidebar = () => {
       {/* Bottom Section */}
       <div className="p-4 border-t border-sidebar-border space-y-1">
         <NavLink to="/settings" className="nav-item">
-          <Settings className="w-5 h-5" />
-          <span className="font-medium">Settings</span>
+          <Settings className="w-4 h-4" />
+          <span className="text-sm">Settings</span>
         </NavLink>
-        <button className="nav-item w-full text-destructive/70 hover:text-destructive hover:bg-destructive/10">
-          <LogOut className="w-5 h-5" />
-          <span className="font-medium">Logout</span>
+        <button className="nav-item w-full text-gray-500 hover:text-white">
+          <LogOut className="w-4 h-4" />
+          <span className="text-sm">Logout</span>
         </button>
       </div>
     </aside>

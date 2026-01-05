@@ -52,14 +52,14 @@ export const GuestSelectionDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-heading text-xl">
+          <DialogTitle>
             Charge to Room - ₱{total.toFixed(2)}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input
               placeholder="Search by guest name or room number..."
               value={searchQuery}
@@ -70,9 +70,9 @@ export const GuestSelectionDialog = ({
 
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {isLoading ? (
-              <p className="text-center text-muted-foreground py-8">Loading...</p>
+              <p className="text-center text-gray-500 py-8 text-sm">Loading...</p>
             ) : filteredBookings.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
+              <p className="text-center text-gray-500 py-8 text-sm">
                 {bookings?.length === 0
                   ? "No active bookings found. Create a booking first."
                   : "No guests match your search."}
@@ -82,31 +82,31 @@ export const GuestSelectionDialog = ({
                 <button
                   key={booking.id}
                   onClick={() => handleSelect(booking)}
-                  className="w-full p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-left flex items-center gap-4"
+                  className="w-full p-4 rounded-sm bg-gray-100 hover:bg-gray-200 transition-colors duration-200 text-left flex items-center gap-4"
                 >
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-500" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-foreground">
+                    <p className="font-medium text-black text-sm">
                       {booking.guest?.first_name} {booking.guest?.last_name}
                     </p>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
-                        <BedDouble className="w-4 h-4" />
+                        <BedDouble className="w-3 h-3" />
                         Room {booking.room?.room_number}
                       </span>
                       <span className="capitalize">{booking.status.replace("_", " ")}</span>
                     </div>
                   </div>
-                  <Check className="w-5 h-5 text-muted-foreground" />
+                  <Check className="w-4 h-4 text-gray-400" />
                 </button>
               ))
             )}
           </div>
 
           <div className="flex justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>

@@ -10,11 +10,11 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children, title, subtitle }: MainLayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-whitesmoke">
       <Sidebar />
       <div className="ml-64">
         <Header title={title} subtitle={subtitle} />
-        <main className="p-6 animate-fade-in">
+        <main className="p-8">
           {children}
         </main>
       </div>
