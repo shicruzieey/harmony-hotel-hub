@@ -41,7 +41,7 @@ const recentBookings = [
 
 const Index = () => {
   return (
-    <MainLayout title="Dashboard" subtitle="Welcome back to Azure Haven Hotel">
+    <MainLayout title="Dashboard" subtitle="Welcome back to Minima Hotel">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
