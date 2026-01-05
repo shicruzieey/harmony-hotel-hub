@@ -269,7 +269,7 @@ export const NewBookingDialog = ({ open, onOpenChange }: NewBookingDialogProps) 
                       <SelectContent>
                         {availableRooms.map((room) => (
                           <SelectItem key={room.id} value={room.id}>
-                            Room {room.room_number} - {room.room_type} (${Number(room.price_per_night)}/night)
+                            Room {room.room_number} - {room.room_type} (₱{Number(room.price_per_night)}/night)
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -406,7 +406,7 @@ export const NewBookingDialog = ({ open, onOpenChange }: NewBookingDialogProps) 
                 <h3 className="font-semibold text-foreground">Booking Summary</h3>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Room {selectedRoom.room_number} ({selectedRoom.room_type})</span>
-                  <span>${Number(selectedRoom.price_per_night)}/night</span>
+                  <span>₱{Number(selectedRoom.price_per_night)}/night</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Duration</span>
@@ -414,7 +414,7 @@ export const NewBookingDialog = ({ open, onOpenChange }: NewBookingDialogProps) 
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between font-semibold">
                   <span>Total</span>
-                  <span className="text-accent">${totalAmount}</span>
+                  <span className="text-accent">₱{totalAmount.toLocaleString()}</span>
                 </div>
               </div>
             )}

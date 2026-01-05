@@ -218,7 +218,7 @@ export const BookingDetailsDialog = ({
                     <DollarSign className="w-3 h-3" /> Total Amount
                   </p>
                   <p className="font-medium text-accent text-lg">
-                    ${Number(booking.total_amount).toFixed(2)}
+                    ₱{Number(booking.total_amount).toFixed(2)}
                   </p>
                 </div>
               </div>

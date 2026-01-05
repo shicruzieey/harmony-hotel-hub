@@ -139,7 +139,7 @@ const POS = () => {
         ? ` for ${booking.guest?.first_name} ${booking.guest?.last_name} (Room ${booking.room?.room_number})`
         : "";
 
-      toast.success(`Payment of $${total.toFixed(2)} processed via ${method}${guestInfo}`);
+      toast.success(`Payment of ₱${total.toFixed(2)} processed via ${method}${guestInfo}`);
       setCart([]);
     } catch (error) {
       toast.error("Failed to process transaction. Please try again.");
@@ -234,7 +234,7 @@ const POS = () => {
                       </p>
                     )}
                     <p className="text-lg font-semibold text-accent">
-                      ${Number(product.price).toFixed(2)}
+                      ₱{Number(product.price).toFixed(2)}
                     </p>
                   </CardContent>
                 </Card>
@@ -274,7 +274,7 @@ const POS = () => {
                         {item.name}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ${item.price.toFixed(2)} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                        ₱{item.price.toFixed(2)} × {item.quantity} = ₱{(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
@@ -315,15 +315,15 @@ const POS = () => {
             <div className="border-t border-border pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-medium">${subtotal.toFixed(2)}</span>
+                <span className="font-medium">₱{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax (10%)</span>
-                <span className="font-medium">${tax.toFixed(2)}</span>
+                <span className="font-medium">₱{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg font-semibold pt-2 border-t border-border">
                 <span>Total</span>
-                <span className="text-accent">${total.toFixed(2)}</span>
+                <span className="text-accent">₱{total.toFixed(2)}</span>
               </div>
             </div>
 
