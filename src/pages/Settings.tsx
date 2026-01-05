@@ -36,19 +36,19 @@ const Settings = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="hotelName">Hotel Name</Label>
-                <Input id="hotelName" defaultValue="Azure Haven Hotel" />
+                <Input id="hotelName" defaultValue="Minima Hotel" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Contact Email</Label>
-                <Input id="email" type="email" defaultValue="info@azurehaven.com" />
+                <Input id="email" type="email" defaultValue="info@minimahotel.com" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" defaultValue="+1 (555) 123-4567" />
+                <Input id="phone" defaultValue="+63 (2) 8123-4567" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="website">Website</Label>
-                <Input id="website" defaultValue="www.azurehaven.com" />
+                <Input id="website" defaultValue="www.minimahotel.com" />
               </div>
             </div>
             <div className="space-y-2">

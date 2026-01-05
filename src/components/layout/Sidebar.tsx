@@ -30,7 +30,7 @@ const Sidebar = () => {
           </div>
           <div>
             <h1 className="font-heading text-lg font-semibold text-sidebar-foreground">
-              Azure Haven
+              Minima Hotel
             </h1>
             <p className="text-xs text-sidebar-foreground/50">Hotel Management</p>
           </div>
