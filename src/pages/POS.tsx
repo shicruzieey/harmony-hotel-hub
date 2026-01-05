@@ -162,17 +162,17 @@ const POS = () => {
 
   return (
     <MainLayout title="Point of Sale" subtitle="Process guest transactions">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Products Section */}
         <div className="lg:col-span-2 space-y-6">
           {/* Categories */}
-          <div className="flex gap-3 overflow-x-auto pb-2">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
               </div>
             ) : categories?.length === 0 ? (
-              <p className="text-muted-foreground">No categories available</p>
+              <p className="text-gray-500 text-sm">No categories available</p>
             ) : (
               categories?.map((cat) => {
                 const Icon = getCategoryIcon(cat.name);
@@ -180,9 +180,8 @@ const POS = () => {
                   <Button
                     key={cat.id}
                     variant={activeCategory === cat.id ? "default" : "secondary"}
-                    className={`flex items-center gap-2 whitespace-nowrap ${
-                      activeCategory === cat.id ? "bg-primary text-primary-foreground" : ""
-                    }`}
+                    size="sm"
+                    className="flex items-center gap-2 whitespace-nowrap"
                     onClick={() => setActiveCategory(cat.id)}
                   >
                     <Icon className="w-4 h-4" />
@@ -195,7 +194,7 @@ const POS = () => {
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input
               placeholder="Search products..."
               value={searchQuery}
@@ -208,10 +207,10 @@ const POS = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {productsLoading ? (
               <div className="col-span-full flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
+              <div className="col-span-full text-center py-12 text-gray-500 text-sm">
                 {products?.length === 0
                   ? "No products available. Add products to the database to get started."
                   : "No products match your search."}
@@ -220,20 +219,20 @@ const POS = () => {
               filteredProducts.map((product) => (
                 <Card
                   key={product.id}
-                  className="glass-card cursor-pointer hover:border-accent transition-colors"
+                  className="cursor-pointer hover:border-gray-400 transition-colors duration-200"
                   onClick={() => addToCart(product)}
                 >
                   <CardContent className="p-4">
-                    <div className="aspect-square bg-secondary rounded-lg mb-3 flex items-center justify-center">
-                      <ShoppingCart className="w-8 h-8 text-muted-foreground/30" />
+                    <div className="aspect-square bg-gray-100 rounded-sm mb-3 flex items-center justify-center">
+                      <ShoppingCart className="w-6 h-6 text-gray-300" />
                     </div>
-                    <h3 className="font-medium text-foreground">{product.name}</h3>
+                    <h3 className="font-medium text-sm text-black">{product.name}</h3>
                     {product.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mb-1">
+                      <p className="text-xs text-gray-500 line-clamp-1 mt-1">
                         {product.description}
                       </p>
                     )}
-                    <p className="text-lg font-semibold text-accent">
+                    <p className="text-base font-medium text-black mt-2">
                       ₱{Number(product.price).toFixed(2)}
                     </p>
                   </CardContent>
@@ -244,13 +243,13 @@ const POS = () => {
         </div>
 
         {/* Cart Section */}
-        <Card className="glass-card h-fit sticky top-24">
-          <CardHeader className="border-b border-border">
-            <CardTitle className="font-heading text-lg flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
+        <Card className="h-fit sticky top-24">
+          <CardHeader className="border-b border-gray-200">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShoppingCart className="w-4 h-4" />
               Current Order
               {cart.length > 0 && (
-                <span className="ml-auto text-sm font-normal text-muted-foreground">
+                <span className="ml-auto text-sm font-normal text-gray-500">
                   {cart.reduce((sum, item) => sum + item.quantity, 0)} items
                 </span>
               )}
@@ -258,22 +257,22 @@ const POS = () => {
           </CardHeader>
           <CardContent className="p-4">
             {/* Cart Items */}
-            <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
               {cart.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
+                <p className="text-center text-gray-500 py-8 text-sm">
                   Cart is empty
                 </p>
               ) : (
                 cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                    className="flex items-center justify-between p-3 bg-gray-100 rounded-sm"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">
+                      <p className="font-medium text-black text-sm truncate">
                         {item.name}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-gray-500">
                         ₱{item.price.toFixed(2)} × {item.quantity} = ₱{(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
@@ -300,7 +299,7 @@ const POS = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive"
+                        className="h-7 w-7 text-gray-500 hover:text-destructive"
                         onClick={() => removeFromCart(item.id)}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -312,25 +311,24 @@ const POS = () => {
             </div>
 
             {/* Totals */}
-            <div className="border-t border-border pt-4 space-y-2">
+            <div className="border-t border-gray-200 pt-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-gray-500">Subtotal</span>
                 <span className="font-medium">₱{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (10%)</span>
+                <span className="text-gray-500">Tax (10%)</span>
                 <span className="font-medium">₱{tax.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-border">
+              <div className="flex justify-between text-base font-medium pt-2 border-t border-gray-200">
                 <span>Total</span>
-                <span className="text-accent">₱{total.toFixed(2)}</span>
+                <span>₱{total.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Payment Buttons */}
-            <div className="grid grid-cols-2 gap-3 mt-6">
+            <div className="grid grid-cols-2 gap-2 mt-6">
               <Button
-                className="bg-primary text-primary-foreground"
                 onClick={() => handleCheckout("Card")}
                 disabled={createTransaction.isPending || cart.length === 0}
               >
@@ -347,7 +345,8 @@ const POS = () => {
               </Button>
             </div>
             <Button
-              className="w-full mt-3 bg-accent text-accent-foreground hover:bg-accent/90"
+              variant="outline"
+              className="w-full mt-2"
               onClick={handleRoomCharge}
               disabled={createTransaction.isPending || cart.length === 0}
             >
@@ -361,7 +360,7 @@ const POS = () => {
             {cart.length > 0 && (
               <Button
                 variant="ghost"
-                className="w-full mt-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="w-full mt-2 text-gray-500 hover:text-destructive"
                 onClick={() => setCart([])}
               >
                 Clear Cart
