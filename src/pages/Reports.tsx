@@ -97,14 +97,14 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Revenue"
-          value="$723,000"
+          value="₱723,000"
           change="+18.2% vs last year"
           changeType="positive"
           icon={DollarSign}
         />
         <StatCard
           title="Average Daily Rate"
-          value="$185"
+          value="₱185"
           change="+12% vs last year"
           changeType="positive"
           icon={TrendingUp}
@@ -120,7 +120,7 @@ const Reports = () => {
         />
         <StatCard
           title="RevPAR"
-          value="$148"
+          value="₱148"
           change="+15% vs last year"
           changeType="positive"
           icon={BedDouble}
@@ -164,7 +164,7 @@ const Reports = () => {
                   strokeWidth={2}
                   fillOpacity={1} 
                   fill="url(#colorRevenue)"
-                  name="Revenue ($)"
+                  name="Revenue (₱)"
                 />
                 <Line 
                   yAxisId="right"
@@ -263,7 +263,7 @@ const Reports = () => {
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-medium text-foreground">{room.room}</span>
-                      <span className="text-sm font-semibold text-accent">${room.revenue.toLocaleString()}</span>
+                      <span className="text-sm font-semibold text-accent">₱{room.revenue.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">

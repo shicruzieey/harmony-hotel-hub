@@ -286,7 +286,7 @@ const Bookings = () => {
                         <div className="text-right flex flex-col items-end gap-2">
                           <div>
                             <p className="text-sm text-muted-foreground">Total</p>
-                            <p className="text-xl font-semibold text-accent">${Number(booking.total_amount)}</p>
+                            <p className="text-xl font-semibold text-accent">₱{Number(booking.total_amount).toLocaleString()}</p>
                             <p className="text-xs text-muted-foreground mt-1">{booking.booking_number}</p>
                           </div>
                           

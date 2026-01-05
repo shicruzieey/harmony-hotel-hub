@@ -53,7 +53,7 @@ export const GuestSelectionDialog = ({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">
-            Charge to Room - ${total.toFixed(2)}
+            Charge to Room - ₱{total.toFixed(2)}
           </DialogTitle>
         </DialogHeader>
 
